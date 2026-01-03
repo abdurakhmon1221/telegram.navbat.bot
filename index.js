@@ -5,8 +5,38 @@ const bot = new TelegramBot(token, { polling: true });
 
 let queues = {};
 
+// START
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "Salom! bot.onText(/\/join (.+)/, (msg, match) => {
+  bot.sendMessage(
+    msg.chat.id,
+    "Salom 👋\n\n" +
+    "Navbat yaratish: /create NOMI\n" +
+    "Navbatga qo‘shilish: /join KOD\n" +
+    "Keyingi odam: /next KOD"
+  );
+});
+
+// CREATE QUEUE
+bot.onText(/\/create (.+)/, (msg, match) => {
+  const name = match[1];
+  const chatId = msg.chat.id;
+
+  const queueId = Math.random().toString(36).substring(7);
+
+  queues[queueId] = {
+    name: name,
+    admin: msg.from.id,
+    users: []
+  };
+
+  bot.sendMessage(
+    chatId,
+    `Navbat yaratildi 🎉\nNomi: ${name}\nKodi: ${queueId}`
+  );
+});
+
+// JOIN QUEUE
+bot.onText(/\/join (.+)/, (msg, match) => {
   const queueId = match[1];
   const chatId = msg.chat.id;
 
@@ -23,14 +53,9 @@ bot.onText(/\/start/, (msg) => {
     chatId,
     `Navbatga qo‘shilding ✅\nOldingda ${queue.users.length - 1} ta odam bor`
   );
-}); bilan navbatga qo‘shil.");
 });
 
-bot.onText(/\/join/, (msg) => {
-  queue.push(msg.from.first_name);
-  bot.sendMessage(msg.chat.id, `Navbatga qo‘shilding. Oldingda ${queue.length - 1} ta odam bor.`);
-});
-
+// NEXT USER (ADMIN ONLY)
 bot.onText(/\/next (.+)/, (msg, match) => {
   const queueId = match[1];
   const chatId = msg.chat.id;
@@ -54,28 +79,4 @@ bot.onText(/\/next (.+)/, (msg, match) => {
 
   const nextUser = queue.users.shift();
   bot.sendMessage(chatId, `${nextUser}, navbating keldi 🎉`);
-});
-  if (queue.length === 0) {
-    bot.sendMessage(msg.chat.id, "Navbat bo‘sh.");
-  } else {
-    const next = queue.shift();
-    bot.sendMessage(msg.chat.id, `${next} navbating keldi!`);
-  }
-});
-bot.onText(/\/create (.+)/, (msg, match) => {
-  const name = match[1];
-  const chatId = msg.chat.id;
-
-  const queueId = Math.random().toString(36).substring(7);
-
-  queues[queueId] = {
-    name: name,
-    admin: msg.from.id,
-    users: []
-  };
-
-  bot.sendMessage(
-    chatId,
-    `Navbat yaratildi 🎉\nNomi: ${name}\nKodi: ${queueId}`
-  );
 });
