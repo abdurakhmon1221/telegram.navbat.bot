@@ -1,213 +1,143 @@
 const TelegramBot = require("node-telegram-bot-api");
+require('dotenv').config();
 
-const token = process.env.BOT_TOKEN;
+// Tokenni .env faylidan olish yoki o'rniga qo'yish
+const token = process.env.BOT_TOKEN || "SIZNING_BOT_TOKENINGIZ";
 const bot = new TelegramBot(token, { polling: true });
 
-// ====== STORAGE (hozircha xotira) ======
-const users = {};
-const queues = {};
-const userSteps = {};
+// ====== DATA STORAGE (Baza o'rniga hozircha xotira) ======
+const users = {}; 
+const companies = {}; 
+const queues = {}; 
 
-// ====== MENULAR ======
-function businessMenu(chatId) {
-  bot.sendMessage(chatId, "🏢 Biznes menyu", {
+// ====== KEYBOARDS (Siz yuborgan rasmdagi uslubda) ======
+
+// Mijoz menyusi
+const clientMenu = {
     reply_markup: {
-      inline_keyboard: [
-        [{ text: "➕ Navbat yaratish", callback_data: "CREATE_QUEUE" }]
-      ]
-    }
-  });
-}
-
-function clientMenu(chatId) {
-  bot.sendMessage(chatId, "👤 Mijoz menyu", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "➕ Navbatga qo‘shilish", callback_data: "JOIN_QUEUE" }],
-        [{ text: "👀 Holatim", callback_data: "STATUS_QUEUE" }]
-      ]
-    }
-  });
-}
-
-// ====== START ======
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-
-  if (!users[userId]) {
-    bot.sendMessage(chatId, "Ro‘yxatdan o‘tamiz 📋", {
-      reply_markup: {
         keyboard: [
-          [{ text: "📱 Telefon raqamni yuborish", request_contact: true }]
+            [{ text: "🔍 Joy qidirish" }, { text: "📅 Mening navbatim" }],
+            [{ text: "📍 Yaqin joylar" }, { text: "📜 Tarix" }],
+            [{ text: "⭐ Reyting" }, { text: "⚙️ Sozlamalar" }]
         ],
-        resize_keyboard: true,
-        one_time_keyboard: true
-      }
-    });
-  } else {
-    users[userId].role === "business"
-      ? businessMenu(chatId)
-      : clientMenu(chatId);
-  }
-});
+        resize_keyboard: true
+    }
+};
 
-// ====== CONTACT (RO‘YXATDAN O‘TISH) ======
-bot.on("contact", (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-
-  users[userId] = {
-    id: userId,
-    name: msg.from.first_name,
-    phone: msg.contact.phone_number,
-    role: null
-  };
-
-  bot.sendMessage(chatId, "Kim sifatida kirasan?", {
+// Biznes menyusi
+const businessMenu = {
     reply_markup: {
-      inline_keyboard: [
-        [{ text: "🏢 Biznes", callback_data: "ROLE_BUSINESS" }],
-        [{ text: "👤 Mijoz", callback_data: "ROLE_CLIENT" }]
-      ]
+        keyboard: [
+            [{ text: "⏭ Keyingi mijoz" }, { text: "📊 Statistika" }],
+            [{ text: "📋 Navbatlar ro'yxati" }, { text: "🛠 Xizmatlar" }],
+            [{ text: "⏸ Tanaffus" }, { text: "📢 Mijozlarga xabar" }]
+        ],
+        resize_keyboard: true
     }
-  });
-});
+};
 
-// ====== CALLBACKS ======
-bot.on("callback_query", (q) => {
-  const chatId = q.message.chat.id;
-  const userId = q.from.id;
+// ====== ASOSIY LOGIKA ======
 
-  // ROLE
-  if (q.data === "ROLE_BUSINESS") {
-    users[userId].role = "business";
-    bot.sendMessage(chatId, "🏢 Biznes akkaunt tayyor");
-    businessMenu(chatId);
-  }
-
-  if (q.data === "ROLE_CLIENT") {
-    users[userId].role = "client";
-    bot.sendMessage(chatId, "👤 Mijoz akkaunt tayyor");
-    clientMenu(chatId);
-  }
-
-  // BUSINESS
-  if (q.data === "CREATE_QUEUE") {
-    userSteps[userId] = "CREATE_QUEUE";
-    bot.sendMessage(chatId, "Navbat nomini yoz:");
-  }
-
-  // CLIENT
-  if (q.data === "JOIN_QUEUE") {
-    userSteps[userId] = "JOIN_QUEUE";
-    bot.sendMessage(chatId, "Navbat kodini yoz:");
-  }
-
-  if (q.data === "STATUS_QUEUE") {
-    userSteps[userId] = "STATUS_QUEUE";
-    bot.sendMessage(chatId, "Navbat kodini yoz:");
-  }
-});
-
-// ====== TEXT INPUT ======
-bot.on("message", (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const text = msg.text;
-
-  if (!userSteps[userId]) return;
-
-  // CREATE QUEUE
-  if (userSteps[userId] === "CREATE_QUEUE") {
-    const queueId = Math.random().toString(36).substring(7);
-
-    queues[queueId] = {
-      name: text,
-      admin: userId,
-      users: []
-    };
-
-    bot.sendMessage(
-      chatId,
-      `✅ Navbat yaratildi\n📌 ${text}\n🔑 Kodi: ${queueId}`
-    );
-
-    delete userSteps[userId];
-    businessMenu(chatId);
-  }
-
-  // JOIN QUEUE
-  if (userSteps[userId] === "JOIN_QUEUE") {
-    const queue = queues[text];
-
-    if (!queue) {
-      bot.sendMessage(chatId, "❌ Bunday navbat yo‘q");
-      return;
-    }
-
-    if (queue.users.find(u => u.id === userId)) {
-      bot.sendMessage(chatId, "Sen allaqachon navbatdasan");
-      delete userSteps[userId];
-      return;
-    }
-
-    queue.users.push({
-      id: userId,
-      name: users[userId].name
-    });
-
-    bot.sendMessage(
-      chatId,
-      `✅ Navbatga qo‘shilding\nOldingda ${queue.users.length - 1} ta odam bor`
-    );
-
-    delete userSteps[userId];
-    clientMenu(chatId);
-  }
-
-  // STATUS
-  if (userSteps[userId] === "STATUS_QUEUE") {
-    const queue = queues[text];
-
-    if (!queue) {
-      bot.sendMessage(chatId, "❌ Navbat topilmadi");
-      return;
-    }
-
-    const index = queue.users.findIndex(u => u.id === userId);
-
-    if (index === -1) {
-      bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    
+    if (!users[chatId]) {
+        bot.sendMessage(chatId, `<b>Assalomu alaykum ${msg.from.first_name}!</b>\n\nPlatformaga xush kelibsiz. Iltimos, rolingizni tanlang:`, {
+            parse_mode: "HTML",
+            reply_markup: {
+                keyboard: [[{ text: "🏢 Biznes (Kompaniya)" }, { text: "👥 Mijoz (Foydalanuvchi)" }]],
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        });
     } else {
-      bot.sendMessage(chatId, `👀 Oldingda ${index} ta odam bor`);
+        const menu = users[chatId].role === 'biz' ? businessMenu : clientMenu;
+        bot.sendMessage(chatId, "Xush kelibsiz!", menu);
     }
-
-    delete userSteps[userId];
-    clientMenu(chatId);
-  }
 });
 
-// ====== NEXT (ADMIN COMMAND) ======
-bot.onText(/\/next (.+)/, (msg, match) => {
-  const queue = queues[match[1]];
-  const chatId = msg.chat.id;
+// Ro'yxatdan o'tish va rollarni ajratish
+bot.on("message", async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
 
-  if (!queue) {
-    bot.sendMessage(chatId, "❌ Navbat topilmadi");
-    return;
-  }
+    if (text === "🏢 Biznes (Kompaniya)") {
+        users[chatId] = { role: 'biz', step: 'name' };
+        bot.sendMessage(chatId, "Kompaniya (tashkilot) nomini kiriting:", { reply_markup: { remove_keyboard: true } });
+    } 
+    else if (text === "👥 Mijoz (Foydalanuvchi)") {
+        users[chatId] = { role: 'client', step: 'done' };
+        bot.sendMessage(chatId, "Siz mijoz sifatida ro'yxatdan o'tdingiz!", clientMenu);
+    }
 
-  if (msg.from.id !== queue.admin) {
-    bot.sendMessage(chatId, "⛔ Bu navbat seniki emas");
-    return;
-  }
+    // Biznes profilini to'ldirish
+    if (users[chatId] && users[chatId].role === 'biz') {
+        if (users[chatId].step === 'name' && text !== "🏢 Biznes (Kompaniya)") {
+            companies[chatId] = { name: text, owner: chatId, avgTime: 15, queue: [] };
+            users[chatId].step = 'done';
+            bot.sendMessage(chatId, `✅ <b>${text}</b> profili yaratildi!\n\nEndi siz mijozlarni qabul qilishingiz mumkin.`, {
+                parse_mode: "HTML",
+                reply_markup: businessMenu.reply_markup
+            });
+        }
+    }
+});
 
-  if (queue.users.length === 0) {
-    bot.sendMessage(chatId, "Navbat bo‘sh");
-    return;
-  }
+// ====== NAVBAT LOGIKASI (Core Engine) ======
 
-  const nextUser = queue.users.shift();
-  bot.sendMessage(chatId, `🎉 ${nextUser.name}, navbating keldi`);
+bot.on("message", (msg) => {
+    const chatId = msg.chat.id;
+
+    if (msg.text === "🔍 Joy qidirish") {
+        const companyList = Object.values(companies);
+        if (companyList.length === 0) {
+            return bot.sendMessage(chatId, "Hozircha hech qanday kompaniya ro'yxatdan o'tmagan.");
+        }
+
+        const inline_keyboard = companyList.map(c => ([{
+            text: `📍 ${c.name} (Kutish: ~${c.queue.length * c.avgTime} min)`,
+            callback_data: `join_${c.owner}`
+        }]));
+
+        bot.sendMessage(chatId, "Navbatga turish uchun joyni tanlang:", {
+            reply_markup: { inline_keyboard }
+        });
+    }
+
+    if (msg.text === "⏭ Keyingi mijoz") {
+        const company = companies[chatId];
+        if (company && company.queue.length > 0) {
+            const nextUser = company.queue.shift(); // Navbatdan birinchi odamni olish
+            bot.sendMessage(chatId, `✅ Navbat yangilandi. Keyingi mijozga xabar yuborildi.`);
+            bot.sendMessage(nextUser, "🔔 <b>Sizning navbatingiz keldi!</b>\nIltimos, xizmat ko'rsatish joyiga kiring.", { parse_mode: "HTML" });
+            
+            // Keyingilarga eslatma (Notification Engine)
+            if (company.queue.length > 0) {
+                company.queue.slice(0, 3).forEach((uId, index) => {
+                    bot.sendMessage(uId, `ℹ️ Tayyor turing, sizdan oldin ${index + 1} kishi qoldi.`);
+                });
+            }
+        } else {
+            bot.sendMessage(chatId, "Navbat bo'sh.");
+        }
+    }
+});
+
+// Callback query (Navbatga yozilish)
+bot.on("callback_query", (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+
+    if (data.startsWith("join_")) {
+        const ownerId = data.split("_")[1];
+        const company = companies[ownerId];
+
+        if (!company.queue.includes(chatId)) {
+            company.queue.push(chatId);
+            const pos = company.queue.length;
+            bot.sendMessage(chatId, `✅ <b>Navbat olingan!</b>\n\n🏢 Joy: ${company.name}\n🔢 Sizning o'rningiz: ${pos}\n⏳ Taxminiy vaqt: ${pos * company.avgTime} daqiqa.`, { parse_mode: "HTML" });
+        } else {
+            bot.answerCallbackQuery(query.id, { text: "Siz allaqachon navbatdasiz!", show_alert: true });
+        }
+    }
 });
