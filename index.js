@@ -31,7 +31,30 @@ bot.onText(/\/join/, (msg) => {
   bot.sendMessage(msg.chat.id, `Navbatga qo‘shilding. Oldingda ${queue.length - 1} ta odam bor.`);
 });
 
-bot.onText(/\/next/, (msg) => {
+bot.onText(/\/next (.+)/, (msg, match) => {
+  const queueId = match[1];
+  const chatId = msg.chat.id;
+
+  const queue = queues[queueId];
+
+  if (!queue) {
+    bot.sendMessage(chatId, "Navbat topilmadi");
+    return;
+  }
+
+  if (msg.from.id !== queue.admin) {
+    bot.sendMessage(chatId, "Bu navbat seniki emas 😤");
+    return;
+  }
+
+  if (queue.users.length === 0) {
+    bot.sendMessage(chatId, "Navbat bo‘sh");
+    return;
+  }
+
+  const nextUser = queue.users.shift();
+  bot.sendMessage(chatId, `${nextUser}, navbating keldi 🎉`);
+});
   if (queue.length === 0) {
     bot.sendMessage(msg.chat.id, "Navbat bo‘sh.");
   } else {
