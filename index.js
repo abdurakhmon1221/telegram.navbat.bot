@@ -12,7 +12,7 @@ bot.onText(/\/start/, (msg) => {
     "Salom 👋\n\n" +
     "Navbat yaratish: /create NOMI\n" +
     "Navbatga qo‘shilish: /join KOD\n" +
-    "Keyingi odam: /next KOD"
+    "Keyingi odam (admin): /next KOD"
   );
 });
 
