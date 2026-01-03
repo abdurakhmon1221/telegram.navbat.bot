@@ -7,13 +7,15 @@ let queues = {};
 
 // START
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(
-    msg.chat.id,
-    "Salom 👋\n\n" +
-    "Navbat yaratish: /create NOMI\n" +
-    "Navbatga qo‘shilish: /join KOD\n" +
-    "Keyingi odam (admin): /next KOD"
-  );
+  bot.sendMessage(msg.chat.id, "Nima qilamiz?", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "➕ Navbatga qo‘shilish", callback_data: "JOIN" }],
+        [{ text: "▶️ Navbat yaratish", callback_data: "CREATE" }],
+        [{ text: "👀 Holatim", callback_data: "STATUS" }]
+      ]
+    }
+  });
 });
 
 // CREATE QUEUE
@@ -104,4 +106,19 @@ bot.onText(/\/status (.+)/, (msg, match) => {
     chatId,
     `Sening navbating 👀\nOldingda ${index} ta odam bor`
   );
+});
+bot.on("callback_query", (query) => {
+  const chatId = query.message.chat.id;
+
+  if (query.data === "CREATE") {
+    bot.sendMessage(chatId, "Navbat nomini yoz:\n/create Klinika");
+  }
+
+  if (query.data === "JOIN") {
+    bot.sendMessage(chatId, "Navbat kodini yoz:\n/join abc123");
+  }
+
+  if (query.data === "STATUS") {
+    bot.sendMessage(chatId, "Navbat kodini yoz:\n/status abc123");
+  }
 });
