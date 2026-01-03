@@ -84,6 +84,7 @@ bot.onText(/\/next (.+)/, (msg, match) => {
 
   const nextUser = queue.users.shift();
 bot.sendMessage(chatId, `${nextUser.name}, navbating keldi 🎉`);
+});
 bot.onText(/\/status (.+)/, (msg, match) => {
   const queueId = match[1];
   const chatId = msg.chat.id;
@@ -122,3 +123,13 @@ bot.on("callback_query", (query) => {
     bot.sendMessage(chatId, "Navbat kodini yoz:\n/status abc123");
   }
 });
+bot.sendMessage(chatId,
+  `Navbat yaratildi 🎉\nNomi: ${name}\nKodi: ${queueId}`,
+  {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "➡️ Keyingi odam", callback_data: `NEXT_${queueId}` }]
+      ]
+    }
+  }
+);
