@@ -22,3 +22,20 @@ bot.onText(/\/next/, (msg) => {
     bot.sendMessage(msg.chat.id, `${next} navbating keldi!`);
   }
 });
+bot.onText(/\/create (.+)/, (msg, match) => {
+  const name = match[1];
+  const chatId = msg.chat.id;
+
+  const queueId = Math.random().toString(36).substring(7);
+
+  queues[queueId] = {
+    name: name,
+    admin: msg.from.id,
+    users: []
+  };
+
+  bot.sendMessage(
+    chatId,
+    `Navbat yaratildi 🎉\nNomi: ${name}\nKodi: ${queueId}`
+  );
+});
