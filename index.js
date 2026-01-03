@@ -2,7 +2,7 @@ const TelegramBot = require("node-telegram-bot-api");
 require('dotenv').config();
 
 // Tokenni .env faylidan olish yoki o'rniga qo'yish
-const token = process.env.BOT_TOKEN || "SIZNING_BOT_TOKENINGIZ";
+const token = process.env.BOT_TOKEN || 8365247379:AAHe3d6nydd1flbY5Ng6x5t_JHblxE5IAiE;
 const bot = new TelegramBot(token, { polling: true });
 
 // ====== DATA STORAGE (Baza o'rniga hozircha xotira) ======
