@@ -47,7 +47,10 @@ bot.onText(/\/join (.+)/, (msg, match) => {
     return;
   }
 
-  queue.users.push(msg.from.first_name);
+  queue.users.push({
+  id: msg.from.id,
+  name: msg.from.first_name
+});
 
   bot.sendMessage(
     chatId,
@@ -78,5 +81,27 @@ bot.onText(/\/next (.+)/, (msg, match) => {
   }
 
   const nextUser = queue.users.shift();
-  bot.sendMessage(chatId, `${nextUser}, navbating keldi 🎉`);
+bot.sendMessage(chatId, `${nextUser.name}, navbating keldi 🎉`);
+bot.onText(/\/status (.+)/, (msg, match) => {
+  const queueId = match[1];
+  const chatId = msg.chat.id;
+
+  const queue = queues[queueId];
+
+  if (!queue) {
+    bot.sendMessage(chatId, "Navbat topilmadi");
+    return;
+  }
+
+  const index = queue.users.findIndex(u => u.id === msg.from.id);
+
+  if (index === -1) {
+    bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
+    return;
+  }
+
+  bot.sendMessage(
+    chatId,
+    `Sening navbating 👀\nOldingda ${index} ta odam bor`
+  );
 });
