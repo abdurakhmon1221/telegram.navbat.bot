@@ -4,10 +4,11 @@ const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 let queues = {};
+let userSteps = {};
 
-// ================= START =================
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "Nima qilamiz?", {
+// ===== MAIN MENU FUNCTION =====
+function sendMainMenu(chatId) {
+  bot.sendMessage(chatId, "Asosiy menyu", {
     reply_markup: {
       inline_keyboard: [
         [{ text: "▶️ Navbat yaratish", callback_data: "CREATE" }],
@@ -16,105 +17,39 @@ bot.onText(/\/start/, (msg) => {
       ]
     }
   });
-});
+}
 
-// ================= CREATE QUEUE =================
-bot.onText(/\/create (.+)/, (msg, match) => {
-  const name = match[1];
-  const chatId = msg.chat.id;
-
-  const queueId = Math.random().toString(36).substring(7);
-
-  queues[queueId] = {
-    name,
-    admin: msg.from.id,
-    users: []
-  };
-
-  bot.sendMessage(
-    chatId,
-    `✅ Navbat yaratildi\n\n📌 Nomi: ${name}\n🔑 Kodi: ${queueId}`
-  );
-  sendMainMenu(chatId);
-});
-
-// ================= JOIN QUEUE =================
-bot.onText(/\/join (.+)/, (msg, match) => {
-  const queueId = match[1];
-  const chatId = msg.chat.id;
-  const queue = queues[queueId];
-
-  if (!queue) {
-    bot.sendMessage(chatId, "❌ Bunday navbat yo‘q");
-    return;
-  }
-
-  const exists = queue.users.find(u => u.id === msg.from.id);
-  if (exists) {
-    bot.sendMessage(chatId, "Sen allaqachon navbatdasan 😐");
-    return;
-  }
-
-  queue.users.push({
-    id: msg.from.id,
-    name: msg.from.first_name
-  });
-
-  bot.sendMessage(
-    chatId,
-    `✅ Navbatga qo‘shilding\nOldingda ${queue.users.length - 1} ta odam bor`
-  );
-  sendMainMenu(chatId);
+// ================= START =================
+bot.onText(/\/start/, (msg) => {
+  sendMainMenu(msg.chat.id);
 });
 
 // ================= NEXT USER (ADMIN) =================
 bot.onText(/\/next (.+)/, (msg, match) => {
-  const queueId = match[1];
+  const queue = queues[match[1]];
   const chatId = msg.chat.id;
-  const queue = queues[queueId];
 
-  if (!queue) {
-    bot.sendMessage(chatId, "❌ Navbat topilmadi");
-    return;
-  }
-
-  if (msg.from.id !== queue.admin) {
-    bot.sendMessage(chatId, "⛔ Bu navbat seniki emas");
-    return;
-  }
-
-  if (queue.users.length === 0) {
-    bot.sendMessage(chatId, "Navbat bo‘sh");
-    return;
-  }
+  if (!queue) return bot.sendMessage(chatId, "Navbat topilmadi");
+  if (msg.from.id !== queue.admin) return bot.sendMessage(chatId, "Bu navbat seniki emas");
+  if (queue.users.length === 0) return bot.sendMessage(chatId, "Navbat bo‘sh");
 
   const nextUser = queue.users.shift();
   bot.sendMessage(chatId, `🎉 ${nextUser.name}, navbating keldi`);
   sendMainMenu(chatId);
 });
 
-// ================= STATUS =================
+// ================= STATUS COMMAND =================
 bot.onText(/\/status (.+)/, (msg, match) => {
-  const queueId = match[1];
+  const queue = queues[match[1]];
   const chatId = msg.chat.id;
-  const queue = queues[queueId];
 
-  if (!queue) {
-    bot.sendMessage(chatId, "❌ Navbat topilmadi");
-    return;
-  }
+  if (!queue) return bot.sendMessage(chatId, "Navbat topilmadi");
 
   const index = queue.users.findIndex(u => u.id === msg.from.id);
+  if (index === -1) return bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
 
-  if (index === -1) {
-    bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
-    return;
-  }
-
-  bot.sendMessage(
-    chatId,
-    `👀 Sening holating\nOldingda ${index} ta odam bor`
-  );
+  bot.sendMessage(chatId, `👀 Oldingda ${index} ta odam bor`);
+  sendMainMenu(chatId);
 });
 
 // ================= BUTTON HANDLER =================
@@ -123,21 +58,26 @@ bot.on("callback_query", (query) => {
   const userId = query.from.id;
 
   if (query.data === "CREATE") {
-    userSteps[userId] = "WAITING_QUEUE_NAME";
-    bot.sendMessage(chatId, "Navbat nomini yoz (masalan: Klinika)");
+    userSteps[userId] = "CREATE";
+    bot.sendMessage(chatId, "Navbat nomini yoz");
   }
 
   if (query.data === "JOIN") {
-    userSteps[userId] = "WAITING_QUEUE_CODE";
+    userSteps[userId] = "JOIN";
     bot.sendMessage(chatId, "Navbat kodini yoz");
   }
 
   if (query.data === "STATUS") {
-    userSteps[userId] = "WAITING_STATUS_CODE";
+    userSteps[userId] = "STATUS";
     bot.sendMessage(chatId, "Navbat kodini yoz");
+  }
+
+  if (query.data === "MENU") {
+    sendMainMenu(chatId);
   }
 });
 
+// ================= TEXT INPUT HANDLER =================
 bot.on("message", (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
@@ -145,68 +85,42 @@ bot.on("message", (msg) => {
   if (!userSteps[userId]) return;
 
   // CREATE
-  if (userSteps[userId] === "WAITING_QUEUE_NAME") {
-    const name = msg.text;
+  if (userSteps[userId] === "CREATE") {
     const queueId = Math.random().toString(36).substring(7);
-
     queues[queueId] = {
-      name,
+      name: msg.text,
       admin: userId,
       users: []
     };
 
-    bot.sendMessage(
-      chatId,
-      `✅ Navbat yaratildi\n📌 Nomi: ${name}\n🔑 Kodi: ${queueId}`
-    );
-
+    bot.sendMessage(chatId, `✅ Navbat yaratildi\n🔑 Kodi: ${queueId}`);
     delete userSteps[userId];
+    sendMainMenu(chatId);
   }
 
   // JOIN
-  else if (userSteps[userId] === "WAITING_QUEUE_CODE") {
+  else if (userSteps[userId] === "JOIN") {
     const queue = queues[msg.text];
+    if (!queue) return bot.sendMessage(chatId, "Navbat topilmadi");
 
-    if (!queue) {
-      bot.sendMessage(chatId, "❌ Bunday navbat yo‘q");
-      return;
-    }
-
-    queue.users.push({
-      id: userId,
-      name: msg.from.first_name
-    });
-
+    queue.users.push({ id: userId, name: msg.from.first_name });
     bot.sendMessage(chatId, "✅ Navbatga qo‘shilding");
     delete userSteps[userId];
+    sendMainMenu(chatId);
   }
 
   // STATUS
-  else if (userSteps[userId] === "WAITING_STATUS_CODE") {
+  else if (userSteps[userId] === "STATUS") {
     const queue = queues[msg.text];
-
-    if (!queue) {
-      bot.sendMessage(chatId, "❌ Navbat topilmadi");
-      return;
-    }
+    if (!queue) return bot.sendMessage(chatId, "Navbat topilmadi");
 
     const index = queue.users.findIndex(u => u.id === userId);
-
-    if (index === -1) {
-      bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
-    } else {
-      bot.sendMessage(chatId, `👀 Oldingda ${index} ta odam bor`);
-    }
+    bot.sendMessage(chatId, index === -1
+      ? "Sen bu navbatda yo‘qsan"
+      : `👀 Oldingda ${index} ta odam bor`
+    );
 
     delete userSteps[userId];
+    sendMainMenu(chatId);
   }
 });
-
-reply_markup: {
-  inline_keyboard: [
-    [{ text: "⬅️ Asosiy menyu", callback_data: "MENU" }]
-  ]
-}
-if (query.data === "MENU") {
-  sendMainMenu(chatId);
-}
