@@ -6,7 +6,24 @@ const bot = new TelegramBot(token, { polling: true });
 let queues = {};
 
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "Salom! /join bilan navbatga qo‘shil.");
+  bot.sendMessage(msg.chat.id, "Salom! bot.onText(/\/join (.+)/, (msg, match) => {
+  const queueId = match[1];
+  const chatId = msg.chat.id;
+
+  const queue = queues[queueId];
+
+  if (!queue) {
+    bot.sendMessage(chatId, "Bunday navbat yo‘q 😢");
+    return;
+  }
+
+  queue.users.push(msg.from.first_name);
+
+  bot.sendMessage(
+    chatId,
+    `Navbatga qo‘shilding ✅\nOldingda ${queue.users.length - 1} ta odam bor`
+  );
+}); bilan navbatga qo‘shil.");
 });
 
 bot.onText(/\/join/, (msg) => {
