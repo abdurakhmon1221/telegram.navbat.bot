@@ -117,16 +117,84 @@ bot.onText(/\/status (.+)/, (msg, match) => {
 // ================= BUTTON HANDLER =================
 bot.on("callback_query", (query) => {
   const chatId = query.message.chat.id;
+  const userId = query.from.id;
 
   if (query.data === "CREATE") {
-    bot.sendMessage(chatId, "Navbat yaratish:\n/create Klinika");
+    userSteps[userId] = "WAITING_QUEUE_NAME";
+    bot.sendMessage(chatId, "Navbat nomini yoz (masalan: Klinika)");
   }
 
   if (query.data === "JOIN") {
-    bot.sendMessage(chatId, "Navbatga qo‘shilish:\n/join abc123");
+    userSteps[userId] = "WAITING_QUEUE_CODE";
+    bot.sendMessage(chatId, "Navbat kodini yoz");
   }
 
   if (query.data === "STATUS") {
-    bot.sendMessage(chatId, "Holatni ko‘rish:\n/status abc123");
+    userSteps[userId] = "WAITING_STATUS_CODE";
+    bot.sendMessage(chatId, "Navbat kodini yoz");
+  }
+});
+
+bot.on("message", (msg) => {
+  const userId = msg.from.id;
+  const chatId = msg.chat.id;
+
+  if (!userSteps[userId]) return;
+
+  // CREATE
+  if (userSteps[userId] === "WAITING_QUEUE_NAME") {
+    const name = msg.text;
+    const queueId = Math.random().toString(36).substring(7);
+
+    queues[queueId] = {
+      name,
+      admin: userId,
+      users: []
+    };
+
+    bot.sendMessage(
+      chatId,
+      `✅ Navbat yaratildi\n📌 Nomi: ${name}\n🔑 Kodi: ${queueId}`
+    );
+
+    delete userSteps[userId];
+  }
+
+  // JOIN
+  else if (userSteps[userId] === "WAITING_QUEUE_CODE") {
+    const queue = queues[msg.text];
+
+    if (!queue) {
+      bot.sendMessage(chatId, "❌ Bunday navbat yo‘q");
+      return;
+    }
+
+    queue.users.push({
+      id: userId,
+      name: msg.from.first_name
+    });
+
+    bot.sendMessage(chatId, "✅ Navbatga qo‘shilding");
+    delete userSteps[userId];
+  }
+
+  // STATUS
+  else if (userSteps[userId] === "WAITING_STATUS_CODE") {
+    const queue = queues[msg.text];
+
+    if (!queue) {
+      bot.sendMessage(chatId, "❌ Navbat topilmadi");
+      return;
+    }
+
+    const index = queue.users.findIndex(u => u.id === userId);
+
+    if (index === -1) {
+      bot.sendMessage(chatId, "Sen bu navbatda yo‘qsan");
+    } else {
+      bot.sendMessage(chatId, `👀 Oldingda ${index} ta odam bor`);
+    }
+
+    delete userSteps[userId];
   }
 });
