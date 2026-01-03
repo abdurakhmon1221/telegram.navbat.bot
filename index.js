@@ -133,3 +133,30 @@ bot.sendMessage(chatId,
     }
   }
 );
+bot.on("callback_query", (query) => {
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  if (query.data.startsWith("NEXT_")) {
+    const queueId = query.data.replace("NEXT_", "");
+    const queue = queues[queueId];
+
+    if (!queue) {
+      bot.sendMessage(chatId, "Navbat yo‘q");
+      return;
+    }
+
+    if (queue.admin !== userId) {
+      bot.sendMessage(chatId, "Bu tugma sen uchun emas 😑");
+      return;
+    }
+
+    if (queue.users.length === 0) {
+      bot.sendMessage(chatId, "Navbat bo‘sh");
+      return;
+    }
+
+    const nextUser = queue.users.shift();
+    bot.sendMessage(chatId, `${nextUser.name}, navbating keldi 🎉`);
+  }
+});
