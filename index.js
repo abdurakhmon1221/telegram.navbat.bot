@@ -35,6 +35,7 @@ bot.onText(/\/create (.+)/, (msg, match) => {
     chatId,
     `✅ Navbat yaratildi\n\n📌 Nomi: ${name}\n🔑 Kodi: ${queueId}`
   );
+  sendMainMenu(chatId);
 });
 
 // ================= JOIN QUEUE =================
@@ -63,6 +64,7 @@ bot.onText(/\/join (.+)/, (msg, match) => {
     chatId,
     `✅ Navbatga qo‘shilding\nOldingda ${queue.users.length - 1} ta odam bor`
   );
+  sendMainMenu(chatId);
 });
 
 // ================= NEXT USER (ADMIN) =================
@@ -88,6 +90,7 @@ bot.onText(/\/next (.+)/, (msg, match) => {
 
   const nextUser = queue.users.shift();
   bot.sendMessage(chatId, `🎉 ${nextUser.name}, navbating keldi`);
+  sendMainMenu(chatId);
 });
 
 // ================= STATUS =================
@@ -198,3 +201,12 @@ bot.on("message", (msg) => {
     delete userSteps[userId];
   }
 });
+
+reply_markup: {
+  inline_keyboard: [
+    [{ text: "⬅️ Asosiy menyu", callback_data: "MENU" }]
+  ]
+}
+if (query.data === "MENU") {
+  sendMainMenu(chatId);
+}
